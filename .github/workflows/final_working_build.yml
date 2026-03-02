@@ -1,0 +1,80 @@
+name: Final Working Android Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y openjdk-17-jdk python3-pip git curl unzip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev libbz2-dev libsqlite3-dev
+
+    - name: Install Python packages
+      run: |
+        pip install --upgrade pip
+        pip install kivy==2.3.1 kivymd==1.2.0 buildozer
+
+    - name: Setup buildozer
+      run: |
+        echo "Setting up buildozer..."
+        mkdir -p .buildozer
+        cp buildozer.spec .buildozer/
+
+    - name: Download python-for-android
+      run: |
+        echo "Downloading python-for-android..."
+        mkdir -p .buildozer/android/platform
+        cd .buildozer/android/platform
+        git clone --depth 1 https://github.com/kivy/python-for-android.git
+
+    - name: Verify setup
+      run: |
+        echo "Verifying setup..."
+        ls -la .buildozer/
+        buildozer --version
+        echo "Setup verification complete"
+
+    - name: Build APK
+      run: |
+        echo "Starting APK build..."
+        export BUILDOZER_LOG_LEVEL=1
+        echo "y" | timeout 25m buildozer android debug
+      timeout-minutes: 30
+
+    - name: Check build results
+      run: |
+        echo "Checking build results..."
+        find . -name "*.apk" -type f 2>/dev/null || echo "No APK files found"
+        ls -la bin/ 2>/dev/null || echo "No bin directory found"
+        echo "Build check complete"
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      if: success()
+      with:
+        name: esp32-controller-apk
+        path: |
+          bin/*.apk
+          bin/*.aab
+        retention-days: 30
+
+    - name: Upload build status
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: build-status
+        path: |
+          .buildozer/
+        retention-days: 7
