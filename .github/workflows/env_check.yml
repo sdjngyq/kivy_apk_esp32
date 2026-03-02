@@ -1,0 +1,76 @@
+name: Environment Check
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Check files
+      run: |
+        echo "Checking repository files..."
+        ls -la
+        echo ""
+        echo "Checking buildozer.spec..."
+        cat buildozer.spec | head -20
+        echo ""
+        echo "Checking requirements.txt..."
+        cat requirements.txt
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Test Python
+      run: |
+        echo "Testing Python..."
+        python3 --version
+        python3 -c "import sys; print('Python path:', sys.path[:3])"
+
+    - name: Install system deps
+      run: |
+        echo "Installing system dependencies..."
+        sudo apt-get update
+        sudo apt-get install -y openjdk-17-jdk python3-pip git curl unzip
+
+    - name: Test Java
+      run: |
+        echo "Testing Java..."
+        java -version
+
+    - name: Install Python packages
+      run: |
+        echo "Installing Python packages..."
+        pip install --upgrade pip
+        pip install kivy==2.3.1 kivymd==1.2.0 buildozer
+
+    - name: Test installations
+      run: |
+        echo "Testing installations..."
+        python3 -c "import kivy; print('Kivy version:', kivy.__version__)"
+        python3 -c "import kivymd; print('KivyMD imported successfully')"
+        buildozer --version
+
+    - name: Create report
+      run: |
+        echo "=== Environment Check Report ===" > env_report.txt
+        echo "Date: $(date)" >> env_report.txt
+        echo "Python: $(python3 --version)" >> env_report.txt
+        echo "Java: $(java -version 2>&1 | head -1)" >> env_report.txt
+        echo "Buildozer: $(buildozer --version)" >> env_report.txt
+        echo "Files present: $(ls -1 | wc -l) files" >> env_report.txt
+        echo "Buildozer spec exists: $(test -f buildozer.spec && echo 'Yes' || echo 'No')" >> env_report.txt
+
+    - name: Upload report
+      uses: actions/upload-artifact@v4
+      with:
+        name: environment-report
+        path: |
+          env_report.txt
+        retention-days: 3
