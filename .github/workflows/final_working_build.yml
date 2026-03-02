@@ -19,7 +19,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y openjdk-17-jdk python3-pip git curl unzip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo-dev cmake libffi-dev libssl-dev libbz2-dev libsqlite3-dev
+        sudo apt-get install -y openjdk-17-jdk python3-pip git curl unzip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo-dev cmake libffi-dev libssl-dev libbz2-dev libsqlite3-dev build-essential
 
     - name: Install Python packages
       run: |
@@ -39,6 +39,14 @@ jobs:
         cd .buildozer/android/platform
         git clone --depth 1 https://github.com/kivy/python-for-android.git
 
+    - name: Accept Android SDK licenses
+      run: |
+        echo "Accepting Android SDK licenses..."
+        yes | $ANDROID_HOME/tools/bin/sdkmanager --licenses || true
+        mkdir -p $ANDROID_HOME/licenses
+        echo -e "\n8933bad161af4178b1185d1a37fbf41ea5269c55\nd56f5187479451eabf01fb78ef6dfdd5\n84831b9409646a918e30573bab4c9c91346d8abd" > $ANDROID_HOME/licenses/android-sdk-license
+        echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" > $ANDROID_HOME/licenses/android-sdk-preview-license
+
     - name: Verify setup
       run: |
         echo "Verifying setup..."
@@ -50,10 +58,15 @@ jobs:
       run: |
         echo "Starting APK build..."
         export BUILDOZER_LOG_LEVEL=1
+        export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
+        export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools
+
         which cython || echo "Cython not found in PATH"
         cython --version || echo "Cython version check failed"
-        echo "y" | timeout 25m buildozer android debug
-      timeout-minutes: 30
+
+        echo "Android SDK location: $ANDROID_HOME"
+        echo "y" | timeout 30m buildozer android debug
+      timeout-minutes: 35
 
     - name: Check build results
       run: |
