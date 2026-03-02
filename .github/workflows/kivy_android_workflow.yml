@@ -1,0 +1,77 @@
+name: Kivy Android Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y openjdk-17-jdk python3-pip git curl unzip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo-dev cmake libffi-dev libssl-dev libbz2-dev libsqlite3-dev build-essential
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install kivy==2.3.1 kivymd==1.2.0 buildozer cython
+
+    - name: Setup buildozer
+      run: |
+        mkdir -p .buildozer
+        cp buildozer.spec .buildozer/
+
+    - name: Download python-for-android
+      run: |
+        mkdir -p .buildozer/android/platform
+        cd .buildozer/android/platform
+        git clone --depth 1 https://github.com/kivy/python-for-android.git
+
+    - name: Setup Android SDK and licenses
+      run: |
+        export ANDROID_HOME=$PWD/.buildozer/android/platform/android-sdk
+        export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools
+
+        mkdir -p $ANDROID_HOME/licenses
+        cat > $ANDROID_HOME/licenses/android-sdk-license << 'EOF'
+        8933bad161af4178b1185d1a37fbf41ea5269c55
+        d56f5187479451eabf01fb78ef6dfdd5
+        84831b9409646a918e30573bab4c9c91346d8abd
+        EOF
+
+        cat > $ANDROID_HOME/licenses/android-sdk-preview-license << 'EOF'
+        84831b9409646a918e30573bab4c9c91346d8abd
+        EOF
+
+    - name: Build Android APK
+      run: |
+        export BUILDOZER_LOG_LEVEL=1
+        export ANDROID_HOME=$PWD/.buildozer/android/platform/android-sdk
+        export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools
+
+        echo "Starting Kivy Android build..."
+        echo "y" | timeout 45m buildozer android debug
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: kivy-android-apk
+        path: |
+          bin/*.apk
+        retention-days: 30
