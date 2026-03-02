@@ -9,14 +9,14 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v4
       with:
         python-version: '3.10'
 
@@ -36,15 +36,19 @@ jobs:
 
     - name: Copy buildozer spec
       run: |
+        mkdir -p ~/.buildozer
         cp buildozer.spec ~/.buildozer/
 
     - name: Download and setup python-for-android
       run: |
+        mkdir -p ~/.buildozer/android/platform
         git clone --depth 1 https://github.com/kivy/python-for-android.git ~/.buildozer/android/platform/python-for-android
 
     - name: Build Android APK (Debug)
       run: |
-        cd /home/runner/work/kivy_apk_esp32/kivy_apk_esp32
+        pwd
+        ls -la
+        echo "Starting buildozer..."
         echo "y" | buildozer android debug
       timeout-minutes: 60
 
@@ -64,5 +68,6 @@ jobs:
       with:
         name: build-logs
         path: |
+          ~/.buildozer/android/platform/build.log
           .buildozer/android/platform/build.log
         retention-days: 7
