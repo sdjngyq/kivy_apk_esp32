@@ -32,20 +32,21 @@ jobs:
         mkdir -p .buildozer
         cp buildozer.spec .buildozer/
 
-    - name: Download python-for-android
+    - name: Setup Android SDK and accept licenses
       run: |
-        echo "Downloading python-for-android..."
+        echo "Setting up Android SDK..."
         mkdir -p .buildozer/android/platform
-        cd .buildozer/android/platform
-        git clone --depth 1 https://github.com/kivy/python-for-android.git
+        export ANDROID_HOME=$PWD/.buildozer/android/platform/android-sdk
+        export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools
 
-    - name: Accept Android SDK licenses
-      run: |
         echo "Accepting Android SDK licenses..."
-        yes | $ANDROID_HOME/tools/bin/sdkmanager --licenses || true
         mkdir -p $ANDROID_HOME/licenses
         echo -e "\n8933bad161af4178b1185d1a37fbf41ea5269c55\nd56f5187479451eabf01fb78ef6dfdd5\n84831b9409646a918e30573bab4c9c91346d8abd" > $ANDROID_HOME/licenses/android-sdk-license
         echo -e "\n84831b9409646a918e30573bab4c9c91346d8abd" > $ANDROID_HOME/licenses/android-sdk-preview-license
+
+        echo "Downloading python-for-android..."
+        cd .buildozer/android/platform
+        git clone --depth 1 https://github.com/kivy/python-for-android.git
 
     - name: Verify setup
       run: |
@@ -58,15 +59,17 @@ jobs:
       run: |
         echo "Starting APK build..."
         export BUILDOZER_LOG_LEVEL=1
-        export ANDROID_HOME=$HOME/.buildozer/android/platform/android-sdk
+        export ANDROID_HOME=$PWD/.buildozer/android/platform/android-sdk
         export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools
 
         which cython || echo "Cython not found in PATH"
         cython --version || echo "Cython version check failed"
 
         echo "Android SDK location: $ANDROID_HOME"
-        echo "y" | timeout 30m buildozer android debug
-      timeout-minutes: 35
+        ls -la $ANDROID_HOME/licenses/ || echo "No licenses found"
+
+        echo "y" | timeout 35m buildozer android debug
+      timeout-minutes: 40
 
     - name: Check build results
       run: |
