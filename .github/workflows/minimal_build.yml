@@ -1,0 +1,61 @@
+name: Minimal Android Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y openjdk-17-jdk python3-pip git curl unzip autoconf libtool pkg-config
+
+    - name: Install Python packages
+      run: |
+        pip install --upgrade pip
+        pip install kivy==2.3.1 kivymd==1.2.0 buildozer
+
+    - name: Setup buildozer
+      run: |
+        buildozer init
+        cp buildozer.spec .buildozer/
+
+    - name: Download python-for-android
+      run: |
+        mkdir -p .buildozer/android/platform
+        cd .buildozer/android/platform
+        git clone --depth 1 https://github.com/kivy/python-for-android.git
+
+    - name: Build APK
+      run: |
+        echo "Starting build..."
+        export BUILDOZER_LOG_LEVEL=1
+        cd /home/runner/work/minimal_build/minimal_build
+        echo "y" | buildozer android debug
+      timeout-minutes: 20
+
+    - name: Check results
+      run: |
+        echo "Checking for APK files..."
+        find . -name "*.apk" -type f 2>/dev/null || echo "No APK found"
+        ls -la bin/ 2>/dev/null || echo "No bin directory"
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      if: success()
+      with:
+        name: apk-files
+        path: |
+          bin/
+        retention-days: 7
