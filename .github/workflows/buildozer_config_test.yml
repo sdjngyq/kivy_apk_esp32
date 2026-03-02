@@ -1,0 +1,84 @@
+name: Buildozer Config Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  config_test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y openjdk-17-jdk python3-pip git curl unzip
+
+    - name: Install Python packages
+      run: |
+        pip install --upgrade pip
+        pip install kivy==2.3.1 kivymd==1.2.0 buildozer
+
+    - name: Check buildozer spec
+      run: |
+        echo "=== Buildozer Spec Content ==="
+        cat buildozer.spec
+        echo ""
+        echo "=== Buildozer Spec Validation ==="
+        python3 -c "
+        import configparser
+        config = configparser.ConfigParser(allow_no_value=True)
+        config.read('buildozer.spec')
+        print('App title:', config.get('app', 'title', fallback='Not found'))
+        print('Package name:', config.get('app', 'package.name', fallback='Not found'))
+        print('Requirements:', config.get('app', 'requirements', fallback='Not found'))
+        "
+
+    - name: Test buildozer init
+      run: |
+        echo "=== Testing buildozer init ==="
+        buildozer init
+        ls -la .buildozer/
+
+    - name: Test buildozer commands
+      run: |
+        echo "=== Testing buildozer commands ==="
+        buildozer --help | head -10
+        echo ""
+        echo "=== Testing android subcommands ==="
+        buildozer android --help | head -10
+
+    - name: Copy and test config
+      run: |
+        echo "=== Copying config and testing ==="
+        cp buildozer.spec .buildozer/
+        echo "Config copied successfully"
+
+    - name: Create config report
+      run: |
+        echo "=== Buildozer Config Test Report ===" > config_report.txt
+        echo "Date: $(date)" >> config_report.txt
+        echo "Buildozer version: $(buildozer --version)" >> config_report.txt
+        echo "Python version: $(python3 --version)" >> config_report.txt
+        echo "Java version: $(java -version 2>&1 | head -1)" >> config_report.txt
+        echo "" >> config_report.txt
+        echo "Buildozer spec exists: $(test -f buildozer.spec && echo 'Yes' || echo 'No')" >> config_report.txt
+        echo "Buildozer dir exists: $(test -d .buildozer && echo 'Yes' || echo 'No')" >> config_report.txt
+        echo "" >> config_report.txt
+        echo "Config test completed successfully" >> config_report.txt
+
+    - name: Upload config report
+      uses: actions/upload-artifact@v4
+      with:
+        name: buildozer-config-report
+        path: |
+          config_report.txt
+          .buildozer/
+        retention-days: 3
