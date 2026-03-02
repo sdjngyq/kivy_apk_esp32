@@ -35,16 +35,29 @@ jobs:
         mkdir -p ~/.buildozer
         cp buildozer.spec ~/.buildozer/
 
+    - name: Copy buildozer spec
+      run: |
+        mkdir -p ~/.buildozer
+        cp buildozer.spec ~/.buildozer/
+        ls -la ~/.buildozer/
+
     - name: Download and setup python-for-android
       run: |
         mkdir -p ~/.buildozer/android/platform
         git clone --depth 1 https://github.com/kivy/python-for-android.git ~/.buildozer/android/platform/python-for-android
 
+    - name: Test buildozer setup
+      run: |
+        echo "Testing buildozer setup..."
+        buildozer --version
+        buildozer --help | head -5
+
     - name: Build Android APK (Debug)
       run: |
         echo "Starting Android APK build..."
-        echo "y" | buildozer android debug
-      timeout-minutes: 45
+        export BUILDOZER_LOG_LEVEL=2
+        echo "y" | timeout 30m buildozer android debug 2>&1 | tee /tmp/buildozer.log
+      timeout-minutes: 35
 
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
@@ -64,4 +77,5 @@ jobs:
         path: |
           ~/.buildozer/android/platform/build.log
           .buildozer/android/platform/build.log
+          /tmp/buildozer.log
         retention-days: 7
