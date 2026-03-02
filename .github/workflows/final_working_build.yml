@@ -20,10 +20,11 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y openjdk-17-jdk python3-pip git curl unzip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo-dev cmake libffi-dev libssl-dev libbz2-dev libsqlite3-dev
+
     - name: Install Python packages
       run: |
         pip install --upgrade pip
-        pip install kivy==2.3.1 kivymd==1.2.0 buildozer
+        pip install cython kivy==2.3.1 kivymd==1.2.0 buildozer
 
     - name: Setup buildozer
       run: |
@@ -49,6 +50,8 @@ jobs:
       run: |
         echo "Starting APK build..."
         export BUILDOZER_LOG_LEVEL=1
+        which cython || echo "Cython not found in PATH"
+        cython --version || echo "Cython version check failed"
         echo "y" | timeout 25m buildozer android debug
       timeout-minutes: 30
 
