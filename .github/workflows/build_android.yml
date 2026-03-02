@@ -1,0 +1,68 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y git curl unzip openjdk-17-jdk python3-dev python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install kivy==2.3.1 kivymd==1.2.0 buildozer cython
+
+    - name: Configure buildozer
+      run: |
+        echo "y" | buildozer init
+
+    - name: Copy buildozer spec
+      run: |
+        cp buildozer.spec ~/.buildozer/
+
+    - name: Download and setup python-for-android
+      run: |
+        git clone --depth 1 https://github.com/kivy/python-for-android.git ~/.buildozer/android/platform/python-for-android
+
+    - name: Build Android APK (Debug)
+      run: |
+        cd /home/runner/work/kivy_apk_esp32/kivy_apk_esp32
+        echo "y" | buildozer android debug
+      timeout-minutes: 60
+
+    - name: Upload APK artifact
+      uses: actions/upload-artifact@v3
+      if: success()
+      with:
+        name: android-apk
+        path: |
+          bin/*.apk
+          bin/*.aab
+        retention-days: 30
+
+    - name: Upload build logs
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: build-logs
+        path: |
+          .buildozer/android/platform/build.log
+        retention-days: 7
