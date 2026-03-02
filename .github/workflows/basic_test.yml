@@ -1,0 +1,56 @@
+name: Basic Buildozer Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y openjdk-17-jdk python3-pip git curl unzip
+
+    - name: Install Python packages
+      run: |
+        pip install --upgrade pip
+        pip install kivy==2.3.1 kivymd==1.2.0 buildozer
+
+    - name: Test buildozer init
+      run: |
+        echo "Testing buildozer initialization..."
+        buildozer init
+        ls -la
+        cat buildozer.spec
+
+    - name: Test buildozer config
+      run: |
+        echo "Testing buildozer configuration..."
+        buildozer android clean
+        cp buildozer.spec .buildozer/
+        buildozer android list
+
+    - name: Create test results
+      run: |
+        echo "Basic test completed" > test_results.txt
+        date >> test_results.txt
+        buildozer --version >> test_results.txt
+
+    - name: Upload results
+      uses: actions/upload-artifact@v4
+      with:
+        name: basic-test-results
+        path: |
+          test_results.txt
+          .buildozer/
+        retention-days: 3
